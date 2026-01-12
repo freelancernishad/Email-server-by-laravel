@@ -32,7 +32,34 @@ class EmailLogController extends Controller
             $query->whereDate('created_at', $request->date);
         }
 
-        // Pagination 20 per page
         return response()->json($query->paginate(20));
+    }
+
+    public function destroy($id)
+    {
+        $log = EmailLog::findOrFail($id);
+        $log->delete();
+
+        return response()->json(['message' => 'Log deleted successfully']);
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        if ($request->has('all') && $request->all) {
+            EmailLog::truncate();
+            return response()->json(['message' => 'All logs cleared successfully']);
+        }
+
+        if ($request->has('config_key') && $request->config_key) {
+            EmailLog::where('config_key', $request->config_key)->delete();
+            return response()->json(['message' => 'Logs for configuration cleared successfully']);
+        }
+
+        if ($request->has('ids') && is_array($request->ids)) {
+            EmailLog::whereIn('id', $request->ids)->delete();
+            return response()->json(['message' => 'Selected logs deleted successfully']);
+        }
+
+        return response()->json(['message' => 'No logs selected for deletion'], 400);
     }
 }

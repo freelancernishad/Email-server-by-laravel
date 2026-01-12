@@ -23,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Email Logs
     Route::get('/email-logs', [\App\Http\Controllers\EmailLogController::class, 'index']);
+    Route::delete('/email-logs/{id}', [\App\Http\Controllers\EmailLogController::class, 'destroy']);
+    Route::post('/email-logs/bulk-delete', [\App\Http\Controllers\EmailLogController::class, 'bulkDestroy']);
 });
 
 Route::post('/send-email', [EmailController::class, 'sendEmail']);

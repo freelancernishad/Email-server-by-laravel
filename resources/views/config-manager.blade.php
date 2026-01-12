@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Server Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         .hidden { display: none !important; }
@@ -242,28 +244,37 @@
                 <div id="section-logs" class="hidden">
                     <h3 class="mb-4">Email Logs</h3>
                     <div class="card p-4">
-                        <div class="row mb-3">
-                            <div class="col-md-3">
-                                <input type="text" id="log-search" class="form-control" placeholder="Search (To, Subject)" onkeyup="fetchLogs()">
-                            </div>
-                            <div class="col-md-3">
-                                <select id="log-config-key" class="form-select" onchange="fetchLogs()">
+                        <!-- Toolbar -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex gap-2 flex-grow-1">
+                                <input type="text" id="log-search" class="form-control" style="max-width: 300px;" placeholder="Search (To, Subject)" onkeyup="fetchLogs()">
+                                <select id="log-config-key" class="form-select" style="max-width: 200px;" onchange="fetchLogs()">
                                     <option value="">All Configurations</option>
                                     <!-- Populated via JS -->
                                 </select>
-                            </div>
-                            <div class="col-md-2">
-                                <select id="log-status" class="form-select" onchange="fetchLogs()">
+                                <select id="log-status" class="form-select" style="max-width: 150px;" onchange="fetchLogs()">
                                     <option value="">All Status</option>
                                     <option value="success">Success</option>
                                     <option value="failed">Failed</option>
                                 </select>
+                                <input type="date" id="log-date" class="form-control" style="max-width: 160px;" onchange="fetchLogs()">
+                                <button class="btn btn-outline-secondary" onclick="resetLogFilters()" title="Reset Filters">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                </button>
                             </div>
-                            <div class="col-md-3">
-                                <input type="date" id="log-date" class="form-control" onchange="fetchLogs()">
-                            </div>
-                            <div class="col-md-1">
-                                <button class="btn btn-secondary w-100" onclick="resetLogFilters()">Reset</button>
+                            
+                            <!-- Bulk Actions -->
+                            <div class="dropdown">
+                                <button class="btn btn-danger dropdown-toggle" type="button" id="deleteMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Bulk Actions
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="deleteMenuButton">
+                                    <li><a class="dropdown-item" href="#" onclick="deleteSelectedLogs()">Delete Selected</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Danger Zone</h6></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="clearLogs('config')">Clear Current Config Logs</a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="clearLogs('all')">Clear ALL Logs</a></li>
+                                </ul>
                             </div>
                         </div>
 
@@ -271,6 +282,7 @@
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
+                                        <th><input type="checkbox" id="select-all-logs" onchange="toggleSelectAll(this)"></th>
                                         <th>Date</th>
                                         <th>To</th>
                                         <th>Subject</th>
@@ -566,7 +578,7 @@
             tbody.innerHTML = '';
             
             if(data.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No logs found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No logs found.</td></tr>';
                 return;
             }
 
@@ -576,10 +588,9 @@
                     ? '<span class="badge bg-success">Success</span>' 
                     : '<span class="badge bg-danger">Failed</span>';
                 
-                const errorInfo = log.status === 'failed' ? `<br><small class="text-danger">${log.error_message}</small>` : '';
-
                 tbody.innerHTML += `
                     <tr>
+                        <td><input type="checkbox" class="log-checkbox" value="${log.id}"></td>
                         <td><small>${date}</small></td>
                         <td>${log.to_email}</td>
                         <td>${log.subject}</td>
@@ -587,6 +598,7 @@
                         <td>${statusBadge}</td>
                         <td>
                             <button class="btn btn-sm btn-outline-info" onclick='showLogDetails(${JSON.stringify(log)})'>Details</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLog(${log.id})">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -626,6 +638,68 @@ ${bodyPreview}
             `);
         }
 
+        async function deleteLog(id) {
+            if(!confirm('Are you sure you want to delete this log?')) return;
+            try {
+                await axios.delete(`${API_URL}/email-logs/${id}`);
+                fetchLogs(currentLogPage);
+            } catch (err) {
+                alert('Failed to delete log.');
+            }
+        }
+
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('.log-checkbox');
+            for(let i=0; i<checkboxes.length; i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+
+        async function deleteSelectedLogs() {
+            const checkboxes = document.querySelectorAll('.log-checkbox:checked');
+            if(checkboxes.length === 0) {
+                alert('Please select logs delete.');
+                return;
+            }
+            if(!confirm(`Delete ${checkboxes.length} selected logs?`)) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            try {
+                await axios.post(`${API_URL}/email-logs/bulk-delete`, { ids });
+                fetchLogs(currentLogPage);
+                document.getElementById('select-all-logs').checked = false;
+            } catch (err) {
+                alert('Failed to delete selected logs.');
+            }
+        }
+
+        async function clearLogs(type) {
+            let confirmMsg = 'Are you sure you want to clear logs?';
+            let payload = {};
+
+            if (type === 'all') {
+                confirmMsg = 'WARNING: This will delete ALL email logs in the system. Continue?';
+                payload = { all: true };
+            } else if (type === 'config') {
+                const configKey = document.getElementById('log-config-key').value;
+                if(!configKey) {
+                    alert('Please select a configuration first to clear its logs.');
+                    return;
+                }
+                confirmMsg = 'This will delete all logs for the currently selected configuration. Continue?';
+                payload = { config_key: configKey };
+            }
+
+            if(!confirm(confirmMsg)) return;
+
+            try {
+                await axios.post(`${API_URL}/email-logs/bulk-delete`, payload);
+                fetchLogs(1);
+            } catch (err) {
+                alert('Failed to clear logs.');
+            }
+        }
+
         async function fetchConfigs() {
             try {
                 const res = await axios.get(`${API_URL}/email-config`);
@@ -637,33 +711,7 @@ ${bodyPreview}
             }
         }
 
-        function renderConfigList() {
-            consttbody = document.getElementById('config-list-body');
-            consttbody.innerHTML = ''; // Start clean
-            if(allConfigs.length === 0) {
-                consttbody.innerHTML = '<tr><td colspan="4" class="text-center">No configurations found.</td></tr>';
-                return;
-            }
 
-            allConfigs.forEach(conf => {
-                consttbody.innerHTML += `
-                    <tr>
-                        <td><strong>${conf.host}</strong><br><small class="text-muted">${conf.username || 'No Auth'}</small></td>
-                        <td>${conf.from_address}</td>
-                        <td>
-                            <code style="cursor:pointer" title="Click to copy" onclick="copyToClipboard('${conf.key}')">${conf.key.substring(0, 10)}...</code>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-info text-white" onclick='editConfig(${JSON.stringify(conf)})'>Edit</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            consttbody = document.getElementById('config-list-body'); // Fix variable name error if any
-        }
-        
-        // Correcting the tbody reference above just in case string template messed up
-        // Re-writing render function safer:
         function renderConfigList() {
              const tbody = document.getElementById('config-list-body');
              tbody.innerHTML = '';
