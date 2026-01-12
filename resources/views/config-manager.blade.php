@@ -675,7 +675,7 @@
              const currentVal = select.value; 
              select.innerHTML = '<option value="">-- Select Config --</option>';
              allConfigs.forEach(conf => {
-                 select.innerHTML += `<option value="${conf.key}">${conf.host}</option>`;
+                 select.innerHTML += `<option value="${conf.key}">${conf.host} (${conf.username || conf.from_address})</option>`;
              });
              if(currentVal) select.value = currentVal;
         }
