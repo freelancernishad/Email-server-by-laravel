@@ -16,6 +16,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/email-config', [EmailController::class, 'index']);
     Route::post('/email-config', [EmailController::class, 'store']);
     Route::put('/email-config/{id}', [EmailController::class, 'update']);
+
+    // User Management
+    Route::get('/users', [\App\Http\Controllers\UserController::class, 'index']);
+    Route::post('/users', [\App\Http\Controllers\UserController::class, 'store']);
 });
 
 Route::post('/send-email', [EmailController::class, 'sendEmail']);
