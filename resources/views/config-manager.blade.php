@@ -222,6 +222,13 @@
                                 </div>
                             </div>
 
+
+
+                            <div class="mb-3">
+                                <label>Attachments (Optional)</label>
+                                <input type="file" id="test-attachments" class="form-control" multiple>
+                            </div>
+
                             <button type="submit" id="send-test-btn" class="btn btn-primary">Send Test Email</button>
                         </form>
                         <div id="test-msg-box" class="mt-3"></div>
@@ -284,6 +291,12 @@
                                     <td>String</td>
                                     <td>No</td>
                                     <td>Override the "From" name defined in config.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>attachments[]</code></td>
+                                    <td>File (Array)</td>
+                                    <td>No</td>
+                                    <td>Multiple file attachments.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -611,21 +624,33 @@
             const btn = document.getElementById('send-test-btn');
             const msgBox = document.getElementById('test-msg-box');
             
-            const payload = {
-                config_key: document.getElementById('test-conf-select').value,
-                to: document.getElementById('test-to').value,
-                subject: document.getElementById('test-subject').value,
-                body: document.getElementById('test-body').value,
-                from_email: document.getElementById('test-from-email').value,
-                from_name: document.getElementById('test-from-name').value
-            };
+            const formData = new FormData();
+            formData.append('config_key', document.getElementById('test-conf-select').value);
+            formData.append('to', document.getElementById('test-to').value);
+            formData.append('subject', document.getElementById('test-subject').value);
+            formData.append('body', document.getElementById('test-body').value);
+            formData.append('from_email', document.getElementById('test-from-email').value);
+            formData.append('from_name', document.getElementById('test-from-name').value);
+
+            formData.append('from_name', document.getElementById('test-from-name').value);
+
+            const fileInput = document.getElementById('test-attachments');
+            if (fileInput.files.length > 0) {
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append('attachments[]', fileInput.files[i]);
+                }
+            }
 
             btn.disabled = true;
             btn.innerText = 'Sending...';
             msgBox.innerHTML = '';
 
             try {
-                const res = await axios.post(`${API_URL}/send-email`, payload);
+                const res = await axios.post(`${API_URL}/send-email`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
                 msgBox.innerHTML = `<div class="alert alert-success">${res.data.message}</div>`;
             } catch (err) {
                 let errorMsg = err.message;
@@ -670,90 +695,125 @@
             
             const snippets = {
                 curl: `curl -X POST "${url}" \\
- -H "Content-Type: application/json" \\
- -d '{
-    "config_key": "${key}",
-    "to": "recipient@example.com",
-    "subject": "Test Email",
-    "body": "<h1>It Works!</h1>",
-    "from_email": "sender@example.com"
- }'`,
+ -F "config_key=${key}" \\
+ -F "to=recipient@example.com" \\
+ -F "subject=Test Email" \\
+ -F "body=<h1>It Works!</h1>" \\
+ -F "attachments[]=@/path/to/file1.pdf" \\
+ -F "attachments[]=@/path/to/file2.jpg"`,
                 php: `&lt;?php
 $client = new GuzzleHttp\\Client();
 $response = $client->post('${url}', [
-    'json' => [
-        'config_key' => '${key}',
-        'to' => 'recipient@example.com',
-        'subject' => 'Test Email',
-        'body' => '<h1>It Works!</h1>'
+    'multipart' => [
+        [ 'name' => 'config_key', 'contents' => '${key}' ],
+        [ 'name' => 'to', 'contents' => 'recipient@example.com' ],
+        [ 'name' => 'subject', 'contents' => 'Test Email' ],
+        [ 'name' => 'body', 'contents' => '<h1>It Works!</h1>' ],
+        [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/file1.pdf', 'r') ],
+        [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/file2.jpg', 'r') ]
     ]
 ]);
 echo $response->getBody();`,
                 python: `import requests
 
 url = "${url}"
+files = [
+    ('attachments[]', ('file1.pdf', open('/path/to/file1.pdf', 'rb'), 'application/pdf')),
+    ('attachments[]', ('file2.jpg', open('/path/to/file2.jpg', 'rb'), 'image/jpeg'))
+]
 payload = {
-    "config_key": "${key}",
-    "to": "recipient@example.com",
-    "subject": "Test Email",
-    "body": "<h1>It Works!</h1>"
+    'config_key': '${key}',
+    'to': 'recipient@example.com',
+    'subject': 'Test Email',
+    'body': '<h1>It Works!</h1>'
 }
-response = requests.post(url, json=payload)
+
+response = requests.post(url, data=payload, files=files)
 print(response.text)`,
                 node: `const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
 
-axios.post('${url}', {
-    config_key: '${key}',
-    to: 'recipient@example.com',
-    subject: 'Test Email',
-    body: '<h1>It Works!</h1>'
+let data = new FormData();
+data.append('config_key', '${key}');
+data.append('to', 'recipient@example.com');
+data.append('subject', 'Test Email');
+data.append('body', '<h1>It Works!</h1>');
+data.append('attachments[]', fs.createReadStream('/path/to/file1.pdf'));
+data.append('attachments[]', fs.createReadStream('/path/to/file2.jpg'));
+
+axios.post('${url}', data, {
+    headers: {
+        ...data.getHeaders()
+    }
 })
 .then(res => console.log(res.data))
 .catch(err => console.error(err));`,
-                java: `import java.net.http.*;
-import java.net.*;
-
-String json = """
-    {"config_key":"${key}", "to":"recipient@example.com", "subject":"Test", "body":"Works"}
-""";
-
-HttpClient client = HttpClient.newHttpClient();
-HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("${url}"))
-    .header("Content-Type", "application/json")
-    .POST(HttpRequest.BodyPublishers.ofString(json))
-    .build();
-
-client.send(request, HttpResponse.BodyHandlers.ofString());`,
+                java: `// Java 11 HttpClient doesn't built-in support for Multipart.
+// You might need a helper class or library like Apache HttpClient.`,
                 go: `package main
 
 import (
     "bytes"
-    "net/http"
     "fmt"
+    "mime/multipart"
+    "net/http"
+    "os"
+    "io"
 )
 
 func main() {
-    json := []byte(\`{"config_key":"${key}", "to":"recipient@example.com", "subject":"Test", "body":"Body"}\`)
-    req, _ := http.NewRequest("POST", "${url}", bytes.NewBuffer(json))
-    req.Header.Set("Content-Type", "application/json")
+    url := "${url}"
+    method := "POST"
+
+    payload := &bytes.Buffer{}
+    writer := multipart.NewWriter(payload)
     
+    // ... add fields ...
+    
+    file1, _ := os.Open("/path/to/file1.pdf")
+    defer file1.Close()
+    part1, _ := writer.CreateFormFile("attachments[]", "/path/to/file1.pdf")
+    io.Copy(part1, file1)
+
+    // ... repeat for file2 ...
+    
+    writer.Close()
+
     client := &http.Client{}
-    resp, _ := client.Do(req)
-    fmt.Println(resp.Status)
+    req, _ := http.NewRequest(method, url, payload)
+    req.Header.Set("Content-Type", writer.FormDataContentType())
+    
+    res, _ := client.Do(req)
+    defer res.Body.Close()
+    
+    fmt.Println(res.Status)
 }`,
                 ruby: `require 'net/http'
+require 'uri'
 require 'json'
 
 uri = URI('${url}')
-res = Net::HTTP.post(uri, {
-    config_key: '${key}',
-    to: 'recipient@example.com',
-    subject: 'Test',
-    body: '<h1>Works</h1>'
-}.to_json, "Content-Type" => "application/json")
+request = Net::HTTP::Post.new(uri)
+form_data = [
+  ['config_key', '${key}'],
+  ['to', 'recipient@example.com'],
+  ['subject', 'Test Email'],
+  ['body', '<h1>It Works!</h1>'],
+  ['attachments[]', File.open('/path/to/file1.pdf')],
+  ['attachments[]', File.open('/path/to/file2.jpg')]
+]
+request.set_form(form_data, 'multipart/form-data')
 
-puts res.body`
+req_options = {
+  use_ssl: uri.scheme == "https",
+}
+
+response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
+  http.request(request)
+end
+
+puts response.body`
             };
             
             document.getElementById('code-display').innerText = snippets[currentLang];

@@ -18,7 +18,8 @@ class EmailController extends Controller
             'body' => 'required|string',
             'from_email' => 'nullable|email',
             'from_name' => 'nullable|string',
-            'attachment' => 'nullable|file',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file',
         ]);
 
         $config = EmailConfiguration::where('key', $validated['config_key'])->firstOrFail();
@@ -49,11 +50,13 @@ class EmailController extends Controller
                         ->subject($validated['subject'])
                         ->html($validated['body']); // Assuming body is HTML
 
-                if (isset($validated['attachment']) && request()->hasFile('attachment')) {
-                    $message->attach(request()->file('attachment')->getRealPath(), [
-                        'as' => request()->file('attachment')->getClientOriginalName(),
-                        'mime' => request()->file('attachment')->getClientMimeType(),
-                    ]);
+                if (isset($validated['attachments']) && request()->hasFile('attachments')) {
+                    foreach (request()->file('attachments') as $file) {
+                        $message->attach($file->getRealPath(), [
+                            'as' => $file->getClientOriginalName(),
+                            'mime' => $file->getClientMimeType(),
+                        ]);
+                    }
                 }
             });
 
