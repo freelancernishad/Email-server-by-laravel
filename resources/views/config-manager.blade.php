@@ -509,7 +509,7 @@
                          <td>
                              <div class="input-group input-group-sm" style="width: 150px;">
                                 <input type="text" class="form-control" value="${conf.key}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('${conf.key}')">Copy</button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyConfigKey('${conf.key}', this)">Copy</button>
                              </div>
                          </td>
                          <td>
@@ -769,6 +769,20 @@ puts res.body`
         }
 
 
+
+        function copyConfigKey(key, btn) {
+            navigator.clipboard.writeText(key);
+            const originalText = btn.innerText;
+            btn.innerText = 'Copied!';
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-secondary');
+            }, 1500);
+        }
 
         // --- User Management Logic ---
         async function fetchUsers() {
