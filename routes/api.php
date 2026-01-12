@@ -20,6 +20,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // User Management
     Route::get('/users', [\App\Http\Controllers\UserController::class, 'index']);
     Route::post('/users', [\App\Http\Controllers\UserController::class, 'store']);
+    
+    // Email Logs
+    Route::get('/email-logs', [\App\Http\Controllers\EmailLogController::class, 'index']);
 });
 
 Route::post('/send-email', [EmailController::class, 'sendEmail']);

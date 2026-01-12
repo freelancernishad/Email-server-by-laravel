@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailConfiguration;
+use App\Models\EmailLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
@@ -60,8 +61,31 @@ class EmailController extends Controller
                 }
             });
 
+            // Log Success
+            EmailLog::create([
+                'config_key' => $validated['config_key'],
+                'from_email' => $validated['from_email'] ?? $config->from_address,
+                'to_email' => $validated['to'],
+                'subject' => $validated['subject'],
+                'body' => $validated['body'],
+                'status' => 'success',
+                'ip_address' => request()->ip(),
+            ]);
+
             return response()->json(['message' => 'Email sent successfully'], 200);
         } catch (\Exception $e) {
+            // Log Failure
+            EmailLog::create([
+                'config_key' => $validated['config_key'],
+                'from_email' => $validated['from_email'] ?? $config->from_address,
+                'to_email' => $validated['to'],
+                'subject' => $validated['subject'],
+                'body' => $validated['body'],
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+                'ip_address' => request()->ip(),
+            ]);
+
             return response()->json(['message' => 'Failed to send email', 'error' => $e->getMessage()], 500);
         }
     }

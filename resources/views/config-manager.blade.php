@@ -51,6 +51,9 @@
                         <a onclick="showSection('test-email')" id="nav-test-email" class="nav-link">Send Test Email</a>
                     </li>
                     <li class="nav-item">
+                        <a onclick="showSection('logs')" id="nav-logs" class="nav-link">Email Logs</a>
+                    </li>
+                    <li class="nav-item">
                         <a onclick="showSection('api-docs')" id="nav-api-docs" class="nav-link">API Docs</a>
                     </li>
                     <li class="nav-item">
@@ -232,6 +235,60 @@
                             <button type="submit" id="send-test-btn" class="btn btn-primary">Send Test Email</button>
                         </form>
                         <div id="test-msg-box" class="mt-3"></div>
+                    </div>
+                </div>
+
+                <!-- Email Logs Section -->
+                <div id="section-logs" class="hidden">
+                    <h3 class="mb-4">Email Logs</h3>
+                    <div class="card p-4">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <input type="text" id="log-search" class="form-control" placeholder="Search (To, Subject)" onkeyup="fetchLogs()">
+                            </div>
+                            <div class="col-md-3">
+                                <select id="log-config-key" class="form-select" onchange="fetchLogs()">
+                                    <option value="">All Configurations</option>
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select id="log-status" class="form-select" onchange="fetchLogs()">
+                                    <option value="">All Status</option>
+                                    <option value="success">Success</option>
+                                    <option value="failed">Failed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="date" id="log-date" class="form-control" onchange="fetchLogs()">
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-secondary w-100" onclick="resetLogFilters()">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>To</th>
+                                        <th>Subject</th>
+                                        <th>From</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logs-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="logs-pagination" class="d-flex justify-content-between align-items-center mt-3">
+                            <!-- Simple Pagination Controls -->
+                            <button class="btn btn-sm btn-outline-primary" id="prev-page-btn" onclick="changeLogPage(-1)">Previous</button>
+                            <span id="page-indicator">Page 1</span>
+                            <button class="btn btn-sm btn-outline-primary" id="next-page-btn" onclick="changeLogPage(1)">Next</button>
+                        </div>
                     </div>
                 </div>
 
@@ -464,10 +521,110 @@
             if(section === 'users') {
                 fetchUsers();
             }
+            if(section === 'logs') {
+                populateLogConfigSelect();
+                fetchLogs();
+            }
         }
 
         // --- Config Manager Logic ---
         let allConfigs = []; // Store fetched configs
+
+        // --- Logs Logic ---
+        let currentLogPage = 1;
+
+        function populateLogConfigSelect() {
+            const select = document.getElementById('log-config-key');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">All Configurations</option>';
+            allConfigs.forEach(conf => {
+                select.innerHTML += `<option value="${conf.key}">${conf.host} (${conf.username || conf.from_address})</option>`;
+            });
+            if(currentVal) select.value = currentVal;
+        }
+
+        async function fetchLogs(page = 1) {
+            currentLogPage = page;
+            const search = document.getElementById('log-search').value;
+            const status = document.getElementById('log-status').value;
+            const date = document.getElementById('log-date').value;
+            const config_key = document.getElementById('log-config-key').value;
+
+            try {
+                const res = await axios.get(`${API_URL}/email-logs`, {
+                    params: { page, search, status, date, config_key }
+                });
+                renderLogs(res.data);
+            } catch (err) {
+                console.error(err);
+                if(err.response && err.response.status === 401) logout();
+            }
+        }
+
+        function renderLogs(data) {
+            const tbody = document.getElementById('logs-table-body');
+            tbody.innerHTML = '';
+            
+            if(data.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No logs found.</td></tr>';
+                return;
+            }
+
+            data.data.forEach(log => {
+                const date = new Date(log.created_at).toLocaleString();
+                const statusBadge = log.status === 'success' 
+                    ? '<span class="badge bg-success">Success</span>' 
+                    : '<span class="badge bg-danger">Failed</span>';
+                
+                const errorInfo = log.status === 'failed' ? `<br><small class="text-danger">${log.error_message}</small>` : '';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><small>${date}</small></td>
+                        <td>${log.to_email}</td>
+                        <td>${log.subject}</td>
+                        <td><small>${log.from_email || '-'}</small></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info" onclick='showLogDetails(${JSON.stringify(log)})'>Details</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Pagination UI
+            document.getElementById('page-indicator').innerText = `Page ${data.current_page} of ${data.last_page}`;
+            document.getElementById('prev-page-btn').disabled = !data.prev_page_url;
+            document.getElementById('next-page-btn').disabled = !data.next_page_url;
+        }
+
+        function changeLogPage(direction) {
+            fetchLogs(currentLogPage + direction);
+        }
+
+        function resetLogFilters() {
+            document.getElementById('log-search').value = '';
+            document.getElementById('log-status').value = '';
+            document.getElementById('log-date').value = '';
+            document.getElementById('log-config-key').value = '';
+            fetchLogs(1);
+        }
+
+        function showLogDetails(log) {
+            // Ideally use a Bootstrap modal, but alert for specific request
+            // Just beware body might be HTML and long. for alert we might strip tags or just show raw.
+            // Let's show a cleaner version.
+            const bodyPreview = log.body ? log.body.replace(/<[^>]*>?/gm, '').substring(0, 200) + '...' : 'No Content';
+            
+            alert(`
+Config Key: ${log.config_key}
+IP Address: ${log.ip_address}
+Error Message: ${log.error_message || 'None'}
+
+Body Preview:
+${bodyPreview}
+            `);
+        }
 
         async function fetchConfigs() {
             try {
