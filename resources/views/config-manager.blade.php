@@ -50,6 +50,9 @@
                     <li class="nav-item">
                         <a onclick="showSection('test-email')" id="nav-test-email" class="nav-link">Send Test Email</a>
                     </li>
+                    <li class="nav-item">
+                        <a onclick="showSection('api-docs')" id="nav-api-docs" class="nav-link">API Docs</a>
+                    </li>
                     <li class="nav-item mt-4">
                         <a onclick="logout()" class="nav-link text-danger">Logout</a>
                     </li>
@@ -222,6 +225,95 @@
                     </div>
                 </div>
 
+                <!-- API Docs Section -->
+                <div id="section-api-docs" class="hidden">
+                    <h3 class="mb-4">API Documentation</h3>
+                    
+                    <div class="card p-4 mb-4">
+                        <h4>Endpoint</h4>
+                        <div class="alert alert-info">
+                            <span class="badge bg-success me-2">POST</span> <span class="font-monospace">{{ url('/api/send-email') }}</span>
+                        </div>
+                        
+                        <h5 class="mt-4">Parameters</h5>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>config_key</code></td>
+                                    <td>String</td>
+                                    <td>Yes</td>
+                                    <td>The unique key of your email configuration.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>to</code></td>
+                                    <td>String (Email)</td>
+                                    <td>Yes</td>
+                                    <td>Recipient's email address.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>subject</code></td>
+                                    <td>String</td>
+                                    <td>Yes</td>
+                                    <td>Email subject line.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>body</code></td>
+                                    <td>String (HTML)</td>
+                                    <td>Yes</td>
+                                    <td>Email content (supports HTML).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>from_email</code></td>
+                                    <td>String (Email)</td>
+                                    <td>No</td>
+                                    <td>Override the "From" address defined in config.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>from_name</code></td>
+                                    <td>String</td>
+                                    <td>No</td>
+                                    <td>Override the "From" name defined in config.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>Code Examples</h4>
+                            <div class="w-50">
+                                <select id="docs-conf-select" class="form-select" onchange="updateCodeSnippets()">
+                                    <option value="">-- Select Config to Fill Key --</option>
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <ul class="nav nav-tabs" id="codeTabs">
+                            <li class="nav-item"><a class="nav-link active" onclick="showCodeTab('curl')">cURL</a></li>
+                            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('php')">PHP</a></li>
+                            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('python')">Python</a></li>
+                            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('node')">Node.js</a></li>
+                            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('java')">Java</a></li>
+                            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('go')">Go</a></li>
+                            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('ruby')">Ruby</a></li>
+                        </ul>
+
+                        <div class="bg-dark text-white p-3 rounded-bottom position-relative">
+                             <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2" onclick="copyCode()">Copy</button>
+                             <pre><code id="code-display" class="language-bash">Select a config to generate code...</code></pre>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -287,6 +379,7 @@
             // Hide all sections
             document.getElementById('section-configs').classList.add('hidden');
             document.getElementById('section-test-email').classList.add('hidden');
+            document.getElementById('section-api-docs').classList.add('hidden');
             
             // Deactivate navs
             document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
@@ -297,6 +390,10 @@
 
             if(section === 'test-email') {
                 populateTestSelect();
+            }
+            if(section === 'api-docs') {
+                populateDocsSelect();
+                updateCodeSnippets();
             }
         }
 
@@ -488,6 +585,131 @@
                 btn.disabled = false;
                 btn.innerText = 'Send Test Email';
             }
+        }
+
+        // --- Docs Logic ---
+        function populateDocsSelect() {
+             const select = document.getElementById('docs-conf-select');
+             // Preserve selected value if resizing/re-rendering (though here we fully rebuild)
+             const currentVal = select.value; 
+             select.innerHTML = '<option value="">-- Select Config --</option>';
+             allConfigs.forEach(conf => {
+                 select.innerHTML += `<option value="${conf.key}">${conf.host}</option>`;
+             });
+             if(currentVal) select.value = currentVal;
+        }
+
+        let currentLang = 'curl';
+
+        function showCodeTab(lang) {
+            currentLang = lang;
+            document.querySelectorAll('#codeTabs .nav-link').forEach(l => l.classList.remove('active'));
+            event.target.classList.add('active');
+            updateCodeSnippets();
+        }
+
+        function updateCodeSnippets() {
+            const key = document.getElementById('docs-conf-select').value || 'YOUR_CONFIG_KEY';
+            const url = window.location.origin + '/api/send-email';
+            
+            const snippets = {
+                curl: `curl -X POST "${url}" \\
+ -H "Content-Type: application/json" \\
+ -d '{
+    "config_key": "${key}",
+    "to": "recipient@example.com",
+    "subject": "Test Email",
+    "body": "<h1>It Works!</h1>",
+    "from_email": "sender@example.com"
+ }'`,
+                php: `&lt;?php
+$client = new GuzzleHttp\\Client();
+$response = $client->post('${url}', [
+    'json' => [
+        'config_key' => '${key}',
+        'to' => 'recipient@example.com',
+        'subject' => 'Test Email',
+        'body' => '<h1>It Works!</h1>'
+    ]
+]);
+echo $response->getBody();`,
+                python: `import requests
+
+url = "${url}"
+payload = {
+    "config_key": "${key}",
+    "to": "recipient@example.com",
+    "subject": "Test Email",
+    "body": "<h1>It Works!</h1>"
+}
+response = requests.post(url, json=payload)
+print(response.text)`,
+                node: `const axios = require('axios');
+
+axios.post('${url}', {
+    config_key: '${key}',
+    to: 'recipient@example.com',
+    subject: 'Test Email',
+    body: '<h1>It Works!</h1>'
+})
+.then(res => console.log(res.data))
+.catch(err => console.error(err));`,
+                java: `import java.net.http.*;
+import java.net.*;
+
+String json = """
+    {"config_key":"${key}", "to":"recipient@example.com", "subject":"Test", "body":"Works"}
+""";
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("${url}"))
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json))
+    .build();
+
+client.send(request, HttpResponse.BodyHandlers.ofString());`,
+                go: `package main
+
+import (
+    "bytes"
+    "net/http"
+    "fmt"
+)
+
+func main() {
+    json := []byte(\`{"config_key":"${key}", "to":"recipient@example.com", "subject":"Test", "body":"Body"}\`)
+    req, _ := http.NewRequest("POST", "${url}", bytes.NewBuffer(json))
+    req.Header.Set("Content-Type", "application/json")
+    
+    client := &http.Client{}
+    resp, _ := client.Do(req)
+    fmt.Println(resp.Status)
+}`,
+                ruby: `require 'net/http'
+require 'json'
+
+uri = URI('${url}')
+res = Net::HTTP.post(uri, {
+    config_key: '${key}',
+    to: 'recipient@example.com',
+    subject: 'Test',
+    body: '<h1>Works</h1>'
+}.to_json, "Content-Type" => "application/json")
+
+puts res.body`
+            };
+            
+            document.getElementById('code-display').innerText = snippets[currentLang];
+        }
+
+        function copyCode() {
+            const code = document.getElementById('code-display').innerText;
+            navigator.clipboard.writeText(code);
+            const btn = event.target;
+            const original = btn.innerText;
+            btn.innerText = 'Copied!';
+            setTimeout(() => btn.innerText = original, 1500);
         }
 
         // Init
