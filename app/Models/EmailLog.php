@@ -15,6 +15,8 @@ class EmailLog extends Model
         'to_email',
         'subject',
         'body',
+        'cc',
+        'bcc',
         'status',
         'error_message',
         'ip_address',

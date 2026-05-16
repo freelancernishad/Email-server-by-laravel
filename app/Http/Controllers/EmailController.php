@@ -17,6 +17,8 @@ class EmailController extends Controller
             'to' => 'required|email',
             'subject' => 'required|string',
             'body' => 'required|string',
+            'cc' => 'nullable|string',
+            'bcc' => 'nullable|string',
             'from_email' => 'nullable|email',
             'from_name' => 'nullable|string',
             'attachments' => 'nullable|array',
@@ -41,6 +43,20 @@ class EmailController extends Controller
                     'subject' => $validated['subject'],
                     'htmlContent' => $validated['body'],
                 ];
+
+                if (!empty($validated['cc'])) {
+                    $ccEmails = explode(',', $validated['cc']);
+                    foreach ($ccEmails as $email) {
+                        $payload['cc'][] = ['email' => trim($email)];
+                    }
+                }
+
+                if (!empty($validated['bcc'])) {
+                    $bccEmails = explode(',', $validated['bcc']);
+                    foreach ($bccEmails as $email) {
+                        $payload['bcc'][] = ['email' => trim($email)];
+                    }
+                }
 
                 if (isset($validated['attachments']) && $request->hasFile('attachments')) {
                     $payload['attachment'] = [];
@@ -82,6 +98,16 @@ class EmailController extends Controller
                         ->subject($validated['subject'])
                         ->html($validated['body']);
 
+                    if (!empty($validated['cc'])) {
+                        $ccEmails = array_map('trim', explode(',', $validated['cc']));
+                        $message->cc($ccEmails);
+                    }
+
+                    if (!empty($validated['bcc'])) {
+                        $bccEmails = array_map('trim', explode(',', $validated['bcc']));
+                        $message->bcc($bccEmails);
+                    }
+
                     if (isset($validated['attachments']) && request()->hasFile('attachments')) {
                         foreach (request()->file('attachments') as $file) {
                             $message->attach($file->getRealPath(), [
@@ -100,6 +126,8 @@ class EmailController extends Controller
                 'to_email' => $validated['to'],
                 'subject' => $validated['subject'],
                 'body' => $validated['body'],
+                'cc' => $validated['cc'] ?? null,
+                'bcc' => $validated['bcc'] ?? null,
                 'status' => 'success',
                 'ip_address' => request()->ip(),
             ]);
@@ -113,6 +141,8 @@ class EmailController extends Controller
                 'to_email' => $validated['to'],
                 'subject' => $validated['subject'],
                 'body' => $validated['body'],
+                'cc' => $validated['cc'] ?? null,
+                'bcc' => $validated['bcc'] ?? null,
                 'status' => 'failed',
                 'error_message' => $e->getMessage(),
                 'ip_address' => request()->ip(),
