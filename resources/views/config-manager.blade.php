@@ -105,7 +105,8 @@
                             <label class="fw-bold">Quick Fill Provider</label>
                             <select id="provider-select" class="form-select" onchange="autoFillProvider()">
                                 <option value="">-- Select a Provider --</option>
-                                <optgroup label="Gmail">
+                                <optgroup label="Popular Providers">
+                                    <option value="brevo">Brevo (API)</option>
                                     <option value="gmail_tls">Gmail (TLS - 587)</option>
                                     <option value="gmail_ssl">Gmail (SSL - 465)</option>
                                 </optgroup>
@@ -138,7 +139,6 @@
                                 <optgroup label="Others">
                                     <option value="icloud">iCloud (TLS - 587)</option>
                                     <option value="fastmail">Fastmail (SSL - 465)</option>
-                                    <option value="brevo">Brevo (API)</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -147,10 +147,10 @@
                             <input type="hidden" id="conf-id">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label>Type</label>
-                                    <select id="conf-type" class="form-select" onchange="toggleTypeFields()">
-                                        <option value="smtp">SMTP</option>
-                                        <option value="brevo">Brevo API</option>
+                                    <label class="fw-bold">Connection Type</label>
+                                    <select id="conf-type" class="form-select border-primary bg-light" onchange="toggleTypeFields()">
+                                        <option value="smtp">Standard SMTP</option>
+                                        <option value="brevo">Brevo (Sendinblue) API</option>
                                     </select>
                                 </div>
                                 <div id="api-key-container" class="col-md-6 mb-3 hidden">
@@ -184,16 +184,19 @@
                                         <label>Encryption</label>
                                         <input type="text" id="conf-enc" class="form-control" placeholder="tls">
                                     </div>
-                                <div class="col-md-4 mb-3">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
                                     <label>From Address</label>
                                     <input type="email" id="conf-from-addr" class="form-control" required>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-6 mb-3">
                                     <label>From Name</label>
                                     <input type="text" id="conf-from-name" class="form-control">
                                 </div>
                             </div>
-                        </div>
                             <div class="d-flex gap-2">
                                 <button type="submit" id="save-btn" class="btn btn-success flex-grow-1">Save Configuration</button>
                                 <button type="button" onclick="hideConfigForm()" class="btn btn-secondary">Cancel</button>
