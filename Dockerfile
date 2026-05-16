@@ -4,9 +4,10 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     curl \
+    libpq-dev \
     libzip-dev \
     zip \
-    && docker-php-ext-install zip pdo pdo_mysql
+    && docker-php-ext-install zip pdo pdo_pgsql pgsql
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -16,10 +17,6 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-RUN cp .env.example .env || true
-
-RUN php artisan key:generate || true
-
 EXPOSE 10000
 
-CMD php artisan serve --host=0.0.0.0 --port=10000
+CMD php artisan config:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=10000
