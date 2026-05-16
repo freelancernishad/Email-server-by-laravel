@@ -138,6 +138,7 @@
                                 <optgroup label="Others">
                                     <option value="icloud">iCloud (TLS - 587)</option>
                                     <option value="fastmail">Fastmail (SSL - 465)</option>
+                                    <option value="brevo">Brevo (API)</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -145,30 +146,44 @@
                         <form onsubmit="handleSaveConfig(event)">
                             <input type="hidden" id="conf-id">
                             <div class="row">
-                                <div class="col-md-8 mb-3">
-                                    <label>Host</label>
-                                    <input type="text" id="conf-host" class="form-control" required placeholder="smtp.example.com">
+                                <div class="col-md-6 mb-3">
+                                    <label>Type</label>
+                                    <select id="conf-type" class="form-select" onchange="toggleTypeFields()">
+                                        <option value="smtp">SMTP</option>
+                                        <option value="brevo">Brevo API</option>
+                                    </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label>Port</label>
-                                    <input type="number" id="conf-port" class="form-control" required placeholder="587">
+                                <div id="api-key-container" class="col-md-6 mb-3 hidden">
+                                    <label>Brevo API Key</label>
+                                    <input type="text" id="conf-api-key" class="form-control" placeholder="xkeysib-...">
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label>Username</label>
-                                    <input type="text" id="conf-user" class="form-control">
+                            <div id="smtp-fields">
+                                <div class="row">
+                                    <div class="col-md-8 mb-3">
+                                        <label>Host</label>
+                                        <input type="text" id="conf-host" class="form-control" placeholder="smtp.example.com">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label>Port</label>
+                                        <input type="number" id="conf-port" class="form-control" placeholder="587">
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label>Password</label>
-                                    <input type="text" id="conf-pass" class="form-control">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label>Username</label>
+                                        <input type="text" id="conf-user" class="form-control">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label>Password</label>
+                                        <input type="text" id="conf-pass" class="form-control">
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label>Encryption</label>
-                                    <input type="text" id="conf-enc" class="form-control" placeholder="tls">
-                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label>Encryption</label>
+                                        <input type="text" id="conf-enc" class="form-control" placeholder="tls">
+                                    </div>
                                 <div class="col-md-4 mb-3">
                                     <label>From Address</label>
                                     <input type="email" id="conf-from-addr" class="form-control" required>
@@ -178,6 +193,7 @@
                                     <input type="text" id="conf-from-name" class="form-control">
                                 </div>
                             </div>
+                        </div>
                             <div class="d-flex gap-2">
                                 <button type="submit" id="save-btn" class="btn btn-success flex-grow-1">Save Configuration</button>
                                 <button type="button" onclick="hideConfigForm()" class="btn btn-secondary">Cancel</button>
@@ -472,7 +488,8 @@
             zoho_ssl: { host: 'smtp.zoho.com', port: 465, enc: 'ssl' },
             zoho_tls: { host: 'smtp.zoho.com', port: 587, enc: 'tls' },
             icloud: { host: 'smtp.mail.me.com', port: 587, enc: 'tls' },
-            fastmail: { host: 'smtp.fastmail.com', port: 465, enc: 'ssl' }
+            fastmail: { host: 'smtp.fastmail.com', port: 465, enc: 'ssl' },
+            brevo: { type: 'brevo' }
         };
 
         // --- Auth & Init ---
@@ -536,6 +553,17 @@
             if(section === 'logs') {
                 populateLogConfigSelect();
                 fetchLogs();
+            }
+        }
+
+        function toggleTypeFields() {
+            const type = document.getElementById('conf-type').value;
+            if(type === 'brevo') {
+                document.getElementById('api-key-container').classList.remove('hidden');
+                document.getElementById('smtp-fields').classList.add('hidden');
+            } else {
+                document.getElementById('api-key-container').classList.add('hidden');
+                document.getElementById('smtp-fields').classList.remove('hidden');
             }
         }
 
@@ -720,9 +748,13 @@ ${bodyPreview}
                  return;
              }
              allConfigs.forEach(conf => {
+                 const typeBadge = conf.type === 'brevo' 
+                     ? '<span class="badge bg-info">Brevo API</span>' 
+                     : '<span class="badge bg-secondary">SMTP</span>';
+                 
                  tbody.innerHTML += `
                      <tr>
-                         <td><strong>${conf.host}</strong><br><small class="text-muted">${conf.username || 'No Auth'}</small></td>
+                         <td><strong>${conf.host || 'Brevo API'}</strong><br>${typeBadge} <small class="text-muted">${conf.username || conf.api_key?.substring(0,8) + '...' || 'No Auth'}</small></td>
                          <td>${conf.from_address}</td>
                          <td>
                              <div class="input-group input-group-sm" style="width: 150px;">
@@ -752,14 +784,17 @@ ${bodyPreview}
         function editConfig(conf) {
             showCreateForm();
             document.getElementById('conf-id').value = conf.id;
-            document.getElementById('conf-host').value = conf.host;
-            document.getElementById('conf-port').value = conf.port;
-            document.getElementById('conf-user').value = conf.username;
-            document.getElementById('conf-pass').value = conf.password;
-            document.getElementById('conf-enc').value = conf.encryption;
-            document.getElementById('conf-from-addr').value = conf.from_address;
-            document.getElementById('conf-from-name').value = conf.from_name;
+            document.getElementById('conf-type').value = conf.type || 'smtp';
+            document.getElementById('conf-api-key').value = conf.api_key || '';
+            document.getElementById('conf-host').value = conf.host || '';
+            document.getElementById('conf-port').value = conf.port || '';
+            document.getElementById('conf-user').value = conf.username || '';
+            document.getElementById('conf-pass').value = conf.password || '';
+            document.getElementById('conf-enc').value = conf.encryption || '';
+            document.getElementById('conf-from-addr').value = conf.from_address || '';
+            document.getElementById('conf-from-name').value = conf.from_name || '';
             
+            toggleTypeFields();
             document.getElementById('form-title').innerText = 'Edit Configuration';
             document.getElementById('save-btn').innerText = 'Update Configuration';
         }
@@ -767,6 +802,9 @@ ${bodyPreview}
         function resetForm() {
             document.querySelector('#config-form-container form').reset();
             document.getElementById('conf-id').value = '';
+            document.getElementById('conf-type').value = 'smtp';
+            document.getElementById('conf-api-key').value = '';
+            toggleTypeFields();
             document.getElementById('form-title').innerText = 'Create New Configuration';
             document.getElementById('save-btn').innerText = 'Save Configuration';
             document.getElementById('conf-msg-box').innerHTML = '';
@@ -776,9 +814,15 @@ ${bodyPreview}
             const provider = document.getElementById('provider-select').value;
             if(provider && providers[provider]) {
                 const data = providers[provider];
-                document.getElementById('conf-host').value = data.host;
-                document.getElementById('conf-port').value = data.port;
-                document.getElementById('conf-enc').value = data.enc;
+                if(data.type === 'brevo') {
+                    document.getElementById('conf-type').value = 'brevo';
+                } else {
+                    document.getElementById('conf-type').value = 'smtp';
+                    document.getElementById('conf-host').value = data.host;
+                    document.getElementById('conf-port').value = data.port;
+                    document.getElementById('conf-enc').value = data.enc;
+                }
+                toggleTypeFields();
             }
         }
 
@@ -786,6 +830,8 @@ ${bodyPreview}
             e.preventDefault();
             const id = document.getElementById('conf-id').value;
             const payload = {
+                type: document.getElementById('conf-type').value,
+                api_key: document.getElementById('conf-api-key').value,
                 host: document.getElementById('conf-host').value,
                 port: document.getElementById('conf-port').value,
                 username: document.getElementById('conf-user').value,
