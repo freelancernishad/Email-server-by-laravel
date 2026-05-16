@@ -11,6 +11,8 @@ class EmailConfiguration extends Model
 
     protected $fillable = [
         'key',
+        'type',
+        'api_key',
         'host',
         'port',
         'username',

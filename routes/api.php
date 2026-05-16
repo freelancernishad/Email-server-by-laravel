@@ -28,3 +28,4 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/send-email', [EmailController::class, 'sendEmail']);
+Route::post('/test-brevo', [EmailController::class, 'testBrevo']);
