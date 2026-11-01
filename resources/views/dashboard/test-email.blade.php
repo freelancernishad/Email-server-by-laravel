@@ -7,7 +7,7 @@
         <form onsubmit="handleSendTestEmail(event)">
             <div class="mb-3">
                 <label class="fw-bold">Select Configuration</label>
-                <select id="test-conf-select" class="form-select" required>
+                <select id="test-conf-select" class="form-select" onchange="onConfigSelected()" required>
                     <option value="">-- Select Saved Config --</option>
                     <!-- Populated via JS -->
                 </select>
@@ -16,7 +16,8 @@
 
             <div class="mb-3">
                 <label>To Email</label>
-                <input type="email" id="test-to" class="form-control" required placeholder="recipient@example.com">
+                <input type="text" id="test-to" class="form-control" required placeholder="recipient@example.com (comma-separated for multiple)">
+                <small class="text-muted">Single email address or multiple comma-separated addresses.</small>
             </div>
 
             <div class="mb-3">
@@ -37,6 +38,32 @@
                 <div class="col-md-6 mb-3">
                     <label>From Name (Optional)</label>
                     <input type="text" id="test-from-name" class="form-control" placeholder="Override Config Default">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>Reply-To Email (Optional)</label>
+                    <input type="email" id="test-reply-to" class="form-control" placeholder="Override Config Default">
+                    <small class="text-muted">Direct replies will be sent to this email address.</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label>Reply-To Name (Optional)</label>
+                    <input type="text" id="test-reply-to-name" class="form-control" placeholder="Override Config Default">
+                    <small class="text-muted">Name displayed for the reply-to address.</small>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>CC (Optional)</label>
+                    <input type="text" id="test-cc" class="form-control" placeholder="cc1@example.com, cc2@example.com">
+                    <small class="text-muted">Carbon copy recipients (comma-separated).</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label>BCC (Optional)</label>
+                    <input type="text" id="test-bcc" class="form-control" placeholder="bcc1@example.com, bcc2@example.com">
+                    <small class="text-muted">Blind carbon copy recipients (comma-separated).</small>
                 </div>
             </div>
 
@@ -70,8 +97,24 @@
         const select = document.getElementById('test-conf-select');
         select.innerHTML = '<option value="">-- Select Saved Config --</option>';
         allConfigs.forEach(conf => {
-            select.innerHTML += `<option value="${conf.key}">${conf.host} (${conf.from_address})</option>`;
+            select.innerHTML += `<option value="${conf.key}">${conf.host || 'Brevo API'} (${conf.from_address})</option>`;
         });
+    }
+
+    function onConfigSelected() {
+        const key = document.getElementById('test-conf-select').value;
+        const conf = allConfigs.find(c => c.key === key);
+        if (conf) {
+            document.getElementById('test-from-email').placeholder = conf.from_address ? `Default: ${conf.from_address}` : 'Override Config Default';
+            document.getElementById('test-from-name').placeholder = conf.from_name ? `Default: ${conf.from_name}` : 'Override Config Default';
+            document.getElementById('test-reply-to').placeholder = conf.reply_to_address ? `Default: ${conf.reply_to_address}` : 'Override Config Default';
+            document.getElementById('test-reply-to-name').placeholder = conf.reply_to_name ? `Default: ${conf.reply_to_name}` : 'Override Config Default';
+        } else {
+            document.getElementById('test-from-email').placeholder = 'Override Config Default';
+            document.getElementById('test-from-name').placeholder = 'Override Config Default';
+            document.getElementById('test-reply-to').placeholder = 'Override Config Default';
+            document.getElementById('test-reply-to-name').placeholder = 'Override Config Default';
+        }
     }
 
     async function handleSendTestEmail(e) {
@@ -84,8 +127,24 @@
         formData.append('to', document.getElementById('test-to').value);
         formData.append('subject', document.getElementById('test-subject').value);
         formData.append('body', document.getElementById('test-body').value);
-        formData.append('from_email', document.getElementById('test-from-email').value);
-        formData.append('from_name', document.getElementById('test-from-name').value);
+
+        const fromEmail = document.getElementById('test-from-email').value;
+        if (fromEmail) formData.append('from_email', fromEmail);
+
+        const fromName = document.getElementById('test-from-name').value;
+        if (fromName) formData.append('from_name', fromName);
+
+        const replyTo = document.getElementById('test-reply-to').value;
+        if (replyTo) formData.append('reply_to', replyTo);
+
+        const replyToName = document.getElementById('test-reply-to-name').value;
+        if (replyToName) formData.append('reply_to_name', replyToName);
+
+        const cc = document.getElementById('test-cc').value;
+        if (cc) formData.append('cc', cc);
+
+        const bcc = document.getElementById('test-bcc').value;
+        if (bcc) formData.append('bcc', bcc);
 
         const fileInput = document.getElementById('test-attachments');
         if (fileInput.files.length > 0) {

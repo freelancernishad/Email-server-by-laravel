@@ -15,7 +15,7 @@
                 <thead>
                     <tr>
                         <th>Provider/Host</th>
-                        <th>From Address</th>
+                        <th>From & Reply-To Address</th>
                         <th>Key (click to copy)</th>
                         <th>Actions</th>
                     </tr>
@@ -100,33 +100,48 @@
                         <input type="number" id="conf-port" class="form-control" placeholder="587">
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Username</label>
+                        <input type="text" id="conf-user" class="form-control">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Password</label>
+                        <input type="text" id="conf-pass" class="form-control">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label>Encryption</label>
+                        <input type="text" id="conf-enc" class="form-control" placeholder="tls">
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label>Username</label>
-                    <input type="text" id="conf-user" class="form-control">
+                    <label>From Address</label>
+                    <input type="email" id="conf-from-addr" class="form-control" required placeholder="noreply@domain.com">
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label>Password</label>
-                    <input type="text" id="conf-pass" class="form-control">
+                    <label>From Name</label>
+                    <input type="text" id="conf-from-name" class="form-control" placeholder="Company Name">
                 </div>
             </div>
-                <div class="col-md-4 mb-3">
-                    <label>Encryption</label>
-                    <input type="text" id="conf-enc" class="form-control" placeholder="tls">
-                </div>
-            </div>
-        </div>
 
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label>From Address</label>
-                <input type="email" id="conf-from-addr" class="form-control" required>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label>Reply-To Email (Optional)</label>
+                    <input type="email" id="conf-reply-to-addr" class="form-control" placeholder="support@domain.com">
+                    <small class="text-muted">Default Reply-To address saved for this configuration.</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label>Reply-To Name (Optional)</label>
+                    <input type="text" id="conf-reply-to-name" class="form-control" placeholder="Support Desk">
+                    <small class="text-muted">Default Reply-To sender name.</small>
+                </div>
             </div>
-            <div class="col-md-6 mb-3">
-                <label>From Name</label>
-                <input type="text" id="conf-from-name" class="form-control">
-            </div>
-        </div>
+
             <div class="d-flex gap-2">
                 <button type="submit" id="save-btn" class="btn btn-success flex-grow-1">Save Configuration</button>
                 <button type="button" onclick="hideConfigForm()" class="btn btn-secondary">Cancel</button>
@@ -185,47 +200,54 @@
     }
 
     function renderConfigList() {
-             const tbody = document.getElementById('config-list-body');
-             tbody.innerHTML = '';
-             if(allConfigs.length === 0) {
-                 tbody.innerHTML = '<tr><td colspan="4" class="text-center">No configurations found.</td></tr>';
-                 return;
-             }
-             allConfigs.forEach(conf => {
-                 const typeBadge = conf.type === 'brevo' 
-                     ? '<span class="badge bg-info">Brevo API</span>' 
-                     : '<span class="badge bg-secondary">SMTP</span>';
-                 
-                 tbody.innerHTML += `
-                     <tr>
-                         <td><strong>${conf.host || 'Brevo API'}</strong><br>${typeBadge} <small class="text-muted">${conf.username || conf.api_key?.substring(0,8) + '...' || 'No Auth'}</small></td>
-                         <td>${conf.from_address}</td>
-                         <td>
-                             <div class="input-group input-group-sm" style="width: 150px;">
-                                <input type="text" class="form-control" value="${conf.key}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyConfigKey('${conf.key}', this)">Copy</button>
-                             </div>
-                         </td>
-                         <td>
-                             <button class="btn btn-sm btn-info text-white" onclick='editConfig(${JSON.stringify(conf)})'>Edit</button>
-                         </td>
-                     </tr>
-                 `;
-             });
+         const tbody = document.getElementById('config-list-body');
+         tbody.innerHTML = '';
+         if(allConfigs.length === 0) {
+             tbody.innerHTML = '<tr><td colspan="4" class="text-center">No configurations found.</td></tr>';
+             return;
+         }
+         allConfigs.forEach(conf => {
+             const typeBadge = conf.type === 'brevo' 
+                 ? '<span class="badge bg-info">Brevo API</span>' 
+                 : '<span class="badge bg-secondary">SMTP</span>';
+             
+             const replyToInfo = conf.reply_to_address 
+                 ? `<br><small class="text-muted"><i class="bi bi-reply-fill text-primary"></i> Reply-To: ${conf.reply_to_address}${conf.reply_to_name ? ` (${conf.reply_to_name})` : ''}</small>` 
+                 : '';
+
+             tbody.innerHTML += `
+                 <tr>
+                     <td><strong>${conf.host || 'Brevo API'}</strong><br>${typeBadge} <small class="text-muted">${conf.username || (conf.api_key ? conf.api_key.substring(0,8) + '...' : 'No Auth')}</small></td>
+                     <td>
+                         <div>${conf.from_address} ${conf.from_name ? `<small class="text-muted">(${conf.from_name})</small>` : ''}</div>
+                         ${replyToInfo}
+                     </td>
+                     <td>
+                         <div class="input-group input-group-sm" style="width: 150px;">
+                            <input type="text" class="form-control" value="${conf.key}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyConfigKey('${conf.key}', this)">Copy</button>
+                         </div>
+                     </td>
+                     <td>
+                         <button class="btn btn-sm btn-info text-white" onclick='editConfig(${JSON.stringify(conf)})'>Edit</button>
+                     </td>
+                 </tr>
+             `;
+         });
     }
 
     function copyConfigKey(key, btn) {
-            navigator.clipboard.writeText(key);
-            const originalText = btn.innerText;
-            btn.innerText = 'Copied!';
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-success');
-            
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-outline-secondary');
-            }, 1500);
+        navigator.clipboard.writeText(key);
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied!';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 1500);
     }
 
     function showCreateForm() {
@@ -250,6 +272,8 @@
         document.getElementById('conf-enc').value = conf.encryption || '';
         document.getElementById('conf-from-addr').value = conf.from_address || '';
         document.getElementById('conf-from-name').value = conf.from_name || '';
+        document.getElementById('conf-reply-to-addr').value = conf.reply_to_address || '';
+        document.getElementById('conf-reply-to-name').value = conf.reply_to_name || '';
         
         toggleTypeFields();
         document.getElementById('form-title').innerText = 'Edit Configuration';
@@ -261,6 +285,8 @@
         document.getElementById('conf-id').value = '';
         document.getElementById('conf-type').value = 'smtp';
         document.getElementById('conf-api-key').value = '';
+        document.getElementById('conf-reply-to-addr').value = '';
+        document.getElementById('conf-reply-to-name').value = '';
         toggleTypeFields();
         document.getElementById('form-title').innerText = 'Create New Configuration';
         document.getElementById('save-btn').innerText = 'Save Configuration';
@@ -296,6 +322,8 @@
             encryption: document.getElementById('conf-enc').value,
             from_address: document.getElementById('conf-from-addr').value,
             from_name: document.getElementById('conf-from-name').value,
+            reply_to_address: document.getElementById('conf-reply-to-addr').value || null,
+            reply_to_name: document.getElementById('conf-reply-to-name').value || null,
         };
 
         try {

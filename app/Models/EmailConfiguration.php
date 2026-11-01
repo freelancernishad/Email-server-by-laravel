@@ -20,6 +20,8 @@ class EmailConfiguration extends Model
         'encryption',
         'from_address',
         'from_name',
+        'reply_to_address',
+        'reply_to_name',
     ];
 
     protected static function boot()

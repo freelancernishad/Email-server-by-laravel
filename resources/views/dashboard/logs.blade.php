@@ -91,8 +91,17 @@
                     <div class="mb-3">
                         <strong>To:</strong> <span id="modal-log-to"></span>
                     </div>
+                    <div class="mb-3 hidden" id="modal-log-cc-row">
+                        <strong>CC:</strong> <span id="modal-log-cc"></span>
+                    </div>
+                    <div class="mb-3 hidden" id="modal-log-bcc-row">
+                        <strong>BCC:</strong> <span id="modal-log-bcc"></span>
+                    </div>
                      <div class="mb-3">
                         <strong>From:</strong> <span id="modal-log-from"></span>
+                    </div>
+                    <div class="mb-3 hidden" id="modal-log-reply-to-row">
+                        <strong>Reply-To:</strong> <span id="modal-log-reply-to"></span>
                     </div>
                     <div id="modal-error-container" class="alert alert-danger hidden mb-3">
                         <strong>Error:</strong> <span id="modal-log-error"></span>
@@ -217,6 +226,27 @@
         document.getElementById('modal-log-subject').innerText = log.subject;
         document.getElementById('modal-log-to').innerText = log.to_email;
         document.getElementById('modal-log-from').innerText = log.from_email || 'Default';
+
+        if (log.cc) {
+            document.getElementById('modal-log-cc-row').classList.remove('hidden');
+            document.getElementById('modal-log-cc').innerText = log.cc;
+        } else {
+            document.getElementById('modal-log-cc-row').classList.add('hidden');
+        }
+
+        if (log.bcc) {
+            document.getElementById('modal-log-bcc-row').classList.remove('hidden');
+            document.getElementById('modal-log-bcc').innerText = log.bcc;
+        } else {
+            document.getElementById('modal-log-bcc-row').classList.add('hidden');
+        }
+
+        if (log.reply_to) {
+            document.getElementById('modal-log-reply-to-row').classList.remove('hidden');
+            document.getElementById('modal-log-reply-to').innerText = log.reply_to;
+        } else {
+            document.getElementById('modal-log-reply-to-row').classList.add('hidden');
+        }
         
         const errorContainer = document.getElementById('modal-error-container');
         if(log.error_message) {

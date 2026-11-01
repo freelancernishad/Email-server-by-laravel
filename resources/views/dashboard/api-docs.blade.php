@@ -11,8 +11,8 @@
         </div>
         
         <h5 class="mt-4">Parameters</h5>
-        <table class="table table-bordered">
-            <thead>
+        <table class="table table-bordered table-striped">
+            <thead class="table-light">
                 <tr>
                     <th>Parameter</th>
                     <th>Type</th>
@@ -24,43 +24,67 @@
                 <tr>
                     <td><code>config_key</code></td>
                     <td>String</td>
-                    <td>Yes</td>
+                    <td><span class="badge bg-danger">Yes</span></td>
                     <td>The unique key of your email configuration.</td>
                 </tr>
                 <tr>
                     <td><code>to</code></td>
                     <td>String (Email)</td>
-                    <td>Yes</td>
-                    <td>Recipient's email address.</td>
+                    <td><span class="badge bg-danger">Yes</span></td>
+                    <td>Recipient email address (or comma-separated list of addresses).</td>
                 </tr>
                 <tr>
                     <td><code>subject</code></td>
                     <td>String</td>
-                    <td>Yes</td>
+                    <td><span class="badge bg-danger">Yes</span></td>
                     <td>Email subject line.</td>
                 </tr>
                 <tr>
                     <td><code>body</code></td>
                     <td>String (HTML)</td>
-                    <td>Yes</td>
+                    <td><span class="badge bg-danger">Yes</span></td>
                     <td>Email content (supports HTML).</td>
                 </tr>
                 <tr>
                     <td><code>from_email</code></td>
                     <td>String (Email)</td>
-                    <td>No</td>
-                    <td>Override the "From" address defined in config.</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
+                    <td>Override the "From" address defined in configuration.</td>
                 </tr>
                 <tr>
                     <td><code>from_name</code></td>
                     <td>String</td>
-                    <td>No</td>
-                    <td>Override the "From" name defined in config.</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
+                    <td>Override the "From" sender name defined in configuration.</td>
+                </tr>
+                <tr>
+                    <td><code>reply_to</code></td>
+                    <td>String (Email)</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
+                    <td>Override the "Reply-To" email defined in configuration (also accepts <code>reply_to_email</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>reply_to_name</code></td>
+                    <td>String</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
+                    <td>Override the "Reply-To" name defined in configuration.</td>
+                </tr>
+                <tr>
+                    <td><code>cc</code></td>
+                    <td>String</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
+                    <td>Comma-separated CC email addresses (e.g. <code>cc1@example.com, cc2@example.com</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>bcc</code></td>
+                    <td>String</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
+                    <td>Comma-separated BCC email addresses (e.g. <code>bcc1@example.com, bcc2@example.com</code>).</td>
                 </tr>
                 <tr>
                     <td><code>attachments[]</code></td>
                     <td>File (Array)</td>
-                    <td>No</td>
+                    <td><span class="badge bg-secondary">Optional</span></td>
                     <td>Multiple file attachments.</td>
                 </tr>
             </tbody>
@@ -83,7 +107,6 @@
             <li class="nav-item"><a class="nav-link" onclick="showCodeTab('php')">PHP</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showCodeTab('python')">Python</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showCodeTab('node')">Node.js</a></li>
-            <li class="nav-item"><a class="nav-link" onclick="showCodeTab('java')">Java</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showCodeTab('go')">Go</a></li>
             <li class="nav-item"><a class="nav-link" onclick="showCodeTab('ruby')">Ruby</a></li>
         </ul>
@@ -117,7 +140,7 @@
          const currentVal = select.value; 
          select.innerHTML = '<option value="">-- Select Config --</option>';
          allConfigs.forEach(conf => {
-             select.innerHTML += `<option value="${conf.key}">${conf.host} (${conf.username || conf.from_address})</option>`;
+             select.innerHTML += `<option value="${conf.key}">${conf.host || 'Brevo API'} (${conf.username || conf.from_address})</option>`;
          });
          if(currentVal) select.value = currentVal;
     }
@@ -138,38 +161,52 @@
  -F "config_key=${key}" \\
  -F "to=recipient@example.com" \\
  -F "subject=Test Email" \\
- -F "body=<h1>It Works!</h1>" \\
- -F "attachments[]=@/path/to/file1.pdf" \\
- -F "attachments[]=@/path/to/file2.jpg"`,
-            php: `&lt;?php
-$client = new GuzzleHttp\\Client();
+ -F "body=<h1>Hello World</h1><p>Sent from Email Server</p>" \\
+ -F "reply_to=support@example.com" \\
+ -F "reply_to_name=Customer Support" \\
+ -F "cc=supervisor@example.com" \\
+ -F "bcc=audit@example.com" \\
+ -F "attachments[]=@/path/to/invoice.pdf"`,
+            php: `<?php
+require 'vendor/autoload.php';
+
+use GuzzleHttp\\Client;
+
+$client = new Client();
 $response = $client->post('${url}', [
-'multipart' => [
-    [ 'name' => 'config_key', 'contents' => '${key}' ],
-    [ 'name' => 'to', 'contents' => 'recipient@example.com' ],
-    [ 'name' => 'subject', 'contents' => 'Test Email' ],
-    [ 'name' => 'body', 'contents' => '<h1>It Works!</h1>' ],
-    [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/file1.pdf', 'r') ],
-    [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/file2.jpg', 'r') ]
-]
+    'multipart' => [
+        [ 'name' => 'config_key',    'contents' => '${key}' ],
+        [ 'name' => 'to',            'contents' => 'recipient@example.com' ],
+        [ 'name' => 'subject',       'contents' => 'Test Email' ],
+        [ 'name' => 'body',          'contents' => '<h1>Hello World</h1><p>Sent from Email Server</p>' ],
+        [ 'name' => 'reply_to',      'contents' => 'support@example.com' ],
+        [ 'name' => 'reply_to_name', 'contents' => 'Customer Support' ],
+        [ 'name' => 'cc',            'contents' => 'supervisor@example.com' ],
+        [ 'name' => 'bcc',           'contents' => 'audit@example.com' ],
+        [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/invoice.pdf', 'r') ],
+    ]
 ]);
+
 echo $response->getBody();`,
             python: `import requests
 
 url = "${url}"
 files = [
-('attachments[]', ('file1.pdf', open('/path/to/file1.pdf', 'rb'), 'application/pdf')),
-('attachments[]', ('file2.jpg', open('/path/to/file2.jpg', 'rb'), 'image/jpeg'))
+    ('attachments[]', ('invoice.pdf', open('/path/to/invoice.pdf', 'rb'), 'application/pdf'))
 ]
 payload = {
-'config_key': '${key}',
-'to': 'recipient@example.com',
-'subject': 'Test Email',
-'body': '<h1>It Works!</h1>'
+    'config_key': '${key}',
+    'to': 'recipient@example.com',
+    'subject': 'Test Email',
+    'body': '<h1>Hello World</h1><p>Sent from Email Server</p>',
+    'reply_to': 'support@example.com',
+    'reply_to_name': 'Customer Support',
+    'cc': 'supervisor@example.com',
+    'bcc': 'audit@example.com'
 }
 
 response = requests.post(url, data=payload, files=files)
-print(response.text)`,
+print(response.json())`,
             node: `const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
@@ -178,85 +215,92 @@ let data = new FormData();
 data.append('config_key', '${key}');
 data.append('to', 'recipient@example.com');
 data.append('subject', 'Test Email');
-data.append('body', '<h1>It Works!</h1>');
-data.append('attachments[]', fs.createReadStream('/path/to/file1.pdf'));
-data.append('attachments[]', fs.createReadStream('/path/to/file2.jpg'));
+data.append('body', '<h1>Hello World</h1><p>Sent from Email Server</p>');
+data.append('reply_to', 'support@example.com');
+data.append('reply_to_name', 'Customer Support');
+data.append('cc', 'supervisor@example.com');
+data.append('bcc', 'audit@example.com');
+data.append('attachments[]', fs.createReadStream('/path/to/invoice.pdf'));
 
 axios.post('${url}', data, {
-headers: {
-    ...data.getHeaders()
-}
+    headers: {
+        ...data.getHeaders()
+    }
 })
 .then(res => console.log(res.data))
-.catch(err => console.error(err));`,
-            java: `// Java 11 HttpClient doesn't built-in support for Multipart.
-// You might need a helper class or library like Apache HttpClient.`,
+.catch(err => console.error(err.response ? err.response.data : err.message));`,
             go: `package main
 
 import (
-"bytes"
-"fmt"
-"mime/multipart"
-"net/http"
-"os"
-"io"
+    "bytes"
+    "fmt"
+    "io"
+    "mime/multipart"
+    "net/http"
+    "os"
 )
 
 func main() {
-url := "${url}"
-method := "POST"
+    url := "${url}"
+    payload := &bytes.Buffer{}
+    writer := multipart.NewWriter(payload)
 
-payload := &bytes.Buffer{}
-writer := multipart.NewWriter(payload)
+    _ = writer.WriteField("config_key", "${key}")
+    _ = writer.WriteField("to", "recipient@example.com")
+    _ = writer.WriteField("subject", "Test Email")
+    _ = writer.WriteField("body", "<h1>Hello World</h1>")
+    _ = writer.WriteField("reply_to", "support@example.com")
+    _ = writer.WriteField("reply_to_name", "Customer Support")
+    _ = writer.WriteField("cc", "supervisor@example.com")
+    _ = writer.WriteField("bcc", "audit@example.com")
 
-// ... add fields ...
+    file, err := os.Open("/path/to/invoice.pdf")
+    if err == nil {
+        defer file.Close()
+        part, _ := writer.CreateFormFile("attachments[]", "invoice.pdf")
+        _, _ = io.Copy(part, file)
+    }
 
-file1, _ := os.Open("/path/to/file1.pdf")
-defer file1.Close()
-part1, _ := writer.CreateFormFile("attachments[]", "/path/to/file1.pdf")
-io.Copy(part1, file1)
+    _ = writer.Close()
 
-// ... repeat for file2 ...
+    req, _ := http.NewRequest("POST", url, payload)
+    req.Header.Set("Content-Type", writer.FormDataContentType())
 
-writer.Close()
+    client := &http.Client{}
+    res, err := client.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer res.Body.Close()
 
-client := &http.Client{}
-req, _ := http.NewRequest(method, url, payload)
-req.Header.Set("Content-Type", writer.FormDataContentType())
-
-res, _ := client.Do(req)
-defer res.Body.Close()
-
-fmt.Println(res.Status)
+    fmt.Println("Status:", res.Status)
 }`,
             ruby: `require 'net/http'
 require 'uri'
-require 'json'
 
 uri = URI('${url}')
 request = Net::HTTP::Post.new(uri)
 form_data = [
-['config_key', '${key}'],
-['to', 'recipient@example.com'],
-['subject', 'Test Email'],
-['body', '<h1>It Works!</h1>'],
-['attachments[]', File.open('/path/to/file1.pdf')],
-['attachments[]', File.open('/path/to/file2.jpg')]
+  ['config_key', '${key}'],
+  ['to', 'recipient@example.com'],
+  ['subject', 'Test Email'],
+  ['body', '<h1>Hello World</h1>'],
+  ['reply_to', 'support@example.com'],
+  ['reply_to_name', 'Customer Support'],
+  ['cc', 'supervisor@example.com'],
+  ['bcc', 'audit@example.com'],
+  ['attachments[]', File.open('/path/to/invoice.pdf')]
 ]
 request.set_form(form_data, 'multipart/form-data')
 
-req_options = {
-use_ssl: uri.scheme == "https",
-}
-
-response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
-http.request(request)
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
 end
 
 puts response.body`
         };
         
-        document.getElementById('code-display').innerText = snippets[currentLang];
+        document.getElementById('code-display').innerText = snippets[currentLang] || '';
     }
 
     function copyCode() {

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\EmailConfiguration;
+use App\Models\EmailLog;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
@@ -25,6 +27,8 @@ class DynamicEmailTest extends TestCase
             'encryption' => 'tls',
             'from_address' => 'sender@example.com',
             'from_name' => 'Test Sender',
+            'reply_to_address' => 'default-reply@example.com',
+            'reply_to_name' => 'Support Desk',
         ]);
 
         // Payload
@@ -39,9 +43,16 @@ class DynamicEmailTest extends TestCase
         $response = $this->postJson('/api/send-email', $payload);
 
         $response->assertStatus(200);
+
+        $this->assertDatabaseHas('email_logs', [
+            'config_key' => $config->key,
+            'to_email' => 'recipient@example.com',
+            'reply_to' => 'default-reply@example.com',
+            'status' => 'success',
+        ]);
     }
 
-    public function test_it_can_override_from_address()
+    public function test_it_can_override_from_address_and_reply_to_and_send_cc_bcc()
     {
         Mail::fake();
 
@@ -53,21 +64,76 @@ class DynamicEmailTest extends TestCase
             'encryption' => 'tls',
             'from_address' => 'default@example.com',
             'from_name' => 'Default Name',
+            'reply_to_address' => 'old-reply@example.com',
+            'reply_to_name' => 'Old Reply',
         ]);
 
         $payload = [
             'config_key' => $config->key,
-            'to' => 'recipient@example.com',
+            'to' => 'recipient1@example.com, recipient2@example.com',
             'subject' => 'Override Test',
             'body' => 'Testing override',
             'from_email' => 'custom@example.com',
             'from_name' => 'Custom Name',
+            'reply_to' => 'custom-reply@example.com',
+            'reply_to_name' => 'Custom Reply Name',
+            'cc' => 'cc1@example.com, cc2@example.com',
+            'bcc' => 'bcc1@example.com',
         ];
 
-        $this->postJson('/api/send-email', $payload)->assertStatus(200);
+        $response = $this->postJson('/api/send-email', $payload);
+        $response->assertStatus(200);
 
-        // Since we can't easily assert on the dynamic mailer instance directly without complex mocking,
-        // we rely on the implementation correctness and successful response here.
-        // In a real integration test, we would check the actual mail sent.
+        $this->assertDatabaseHas('email_logs', [
+            'config_key' => $config->key,
+            'from_email' => 'custom@example.com',
+            'to_email' => 'recipient1@example.com, recipient2@example.com',
+            'reply_to' => 'custom-reply@example.com',
+            'cc' => 'cc1@example.com, cc2@example.com',
+            'bcc' => 'bcc1@example.com',
+            'status' => 'success',
+        ]);
+    }
+
+    public function test_it_can_create_and_update_configuration_with_reply_to()
+    {
+        $user = User::factory()->create();
+
+        $createPayload = [
+            'type' => 'smtp',
+            'host' => 'smtp.example.com',
+            'port' => 587,
+            'username' => 'john@example.com',
+            'password' => 'secret123',
+            'encryption' => 'tls',
+            'from_address' => 'sender@example.com',
+            'from_name' => 'My Sender',
+            'reply_to_address' => 'reply@example.com',
+            'reply_to_name' => 'Help Center',
+        ];
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/email-config', $createPayload);
+        $response->assertStatus(201);
+        $configId = $response->json('data.id');
+
+        $this->assertDatabaseHas('email_configurations', [
+            'id' => $configId,
+            'reply_to_address' => 'reply@example.com',
+            'reply_to_name' => 'Help Center',
+        ]);
+
+        $updatePayload = array_merge($createPayload, [
+            'reply_to_address' => 'updated-reply@example.com',
+            'reply_to_name' => 'Support Team',
+        ]);
+
+        $updateResponse = $this->actingAs($user, 'sanctum')->putJson("/api/email-config/{$configId}", $updatePayload);
+        $updateResponse->assertStatus(200);
+
+        $this->assertDatabaseHas('email_configurations', [
+            'id' => $configId,
+            'reply_to_address' => 'updated-reply@example.com',
+            'reply_to_name' => 'Support Team',
+        ]);
     }
 }

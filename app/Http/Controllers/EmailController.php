@@ -14,9 +14,12 @@ class EmailController extends Controller
     {
         $validated = $request->validate([
             'config_key' => 'required|exists:email_configurations,key',
-            'to' => 'required|email',
+            'to' => 'required|string',
             'subject' => 'required|string',
             'body' => 'required|string',
+            'reply_to' => 'nullable|email',
+            'reply_to_email' => 'nullable|email',
+            'reply_to_name' => 'nullable|string',
             'cc' => 'nullable|string',
             'bcc' => 'nullable|string',
             'from_email' => 'nullable|email',
@@ -29,6 +32,17 @@ class EmailController extends Controller
 
         $fromEmail = $validated['from_email'] ?? $config->from_address;
         $fromName = $validated['from_name'] ?? $config->from_name;
+        $replyToEmail = $validated['reply_to'] ?? $validated['reply_to_email'] ?? $config->reply_to_address;
+        $replyToName = $validated['reply_to_name'] ?? $config->reply_to_name;
+
+        // Parse recipients (support single or comma-separated emails)
+        $toEmails = array_values(array_filter(array_map('trim', explode(',', $validated['to']))));
+        if (empty($toEmails)) {
+            return response()->json(['message' => 'Failed to send email', 'error' => 'No valid recipient email address provided.'], 422);
+        }
+
+        $ccEmails = !empty($validated['cc']) ? array_values(array_filter(array_map('trim', explode(',', $validated['cc'])))) : [];
+        $bccEmails = !empty($validated['bcc']) ? array_values(array_filter(array_map('trim', explode(',', $validated['bcc'])))) : [];
 
         try {
             if ($config->type === 'brevo') {
@@ -37,25 +51,31 @@ class EmailController extends Controller
                     throw new \Exception('Brevo API key is not configured.');
                 }
 
+                $sender = ['email' => $fromEmail];
+                if (!empty($fromName)) {
+                    $sender['name'] = $fromName;
+                }
+
                 $payload = [
-                    'sender' => ['name' => $fromName, 'email' => $fromEmail],
-                    'to' => [['email' => $validated['to']]],
+                    'sender' => $sender,
+                    'to' => array_map(fn($email) => ['email' => $email], $toEmails),
                     'subject' => $validated['subject'],
                     'htmlContent' => $validated['body'],
                 ];
 
-                if (!empty($validated['cc'])) {
-                    $ccEmails = explode(',', $validated['cc']);
-                    foreach ($ccEmails as $email) {
-                        $payload['cc'][] = ['email' => trim($email)];
-                    }
+                if (!empty($replyToEmail)) {
+                    $payload['replyTo'] = array_filter([
+                        'email' => $replyToEmail,
+                        'name' => $replyToName,
+                    ]);
                 }
 
-                if (!empty($validated['bcc'])) {
-                    $bccEmails = explode(',', $validated['bcc']);
-                    foreach ($bccEmails as $email) {
-                        $payload['bcc'][] = ['email' => trim($email)];
-                    }
+                if (!empty($ccEmails)) {
+                    $payload['cc'] = array_map(fn($email) => ['email' => $email], $ccEmails);
+                }
+
+                if (!empty($bccEmails)) {
+                    $payload['bcc'] = array_map(fn($email) => ['email' => $email], $bccEmails);
                 }
 
                 if (isset($validated['attachments']) && $request->hasFile('attachments')) {
@@ -92,19 +112,21 @@ class EmailController extends Controller
                     'local_domain' => env('MAIL_EHLO_DOMAIN'),
                 ]);
 
-                Mail::mailer($mailerName)->send([], [], function ($message) use ($validated, $fromEmail, $fromName) {
-                    $message->to($validated['to'])
-                        ->from($fromEmail, $fromName)
+                Mail::mailer($mailerName)->send([], [], function ($message) use ($toEmails, $fromEmail, $fromName, $replyToEmail, $replyToName, $ccEmails, $bccEmails, $validated) {
+                    $message->to($toEmails)
+                        ->from($fromEmail, $fromName ?: null)
                         ->subject($validated['subject'])
                         ->html($validated['body']);
 
-                    if (!empty($validated['cc'])) {
-                        $ccEmails = array_map('trim', explode(',', $validated['cc']));
+                    if (!empty($replyToEmail)) {
+                        $message->replyTo($replyToEmail, $replyToName ?: null);
+                    }
+
+                    if (!empty($ccEmails)) {
                         $message->cc($ccEmails);
                     }
 
-                    if (!empty($validated['bcc'])) {
-                        $bccEmails = array_map('trim', explode(',', $validated['bcc']));
+                    if (!empty($bccEmails)) {
                         $message->bcc($bccEmails);
                     }
 
@@ -126,6 +148,7 @@ class EmailController extends Controller
                 'to_email' => $validated['to'],
                 'subject' => $validated['subject'],
                 'body' => $validated['body'],
+                'reply_to' => $replyToEmail,
                 'cc' => $validated['cc'] ?? null,
                 'bcc' => $validated['bcc'] ?? null,
                 'status' => 'success',
@@ -141,6 +164,7 @@ class EmailController extends Controller
                 'to_email' => $validated['to'],
                 'subject' => $validated['subject'],
                 'body' => $validated['body'],
+                'reply_to' => $replyToEmail,
                 'cc' => $validated['cc'] ?? null,
                 'bcc' => $validated['bcc'] ?? null,
                 'status' => 'failed',
@@ -164,6 +188,8 @@ class EmailController extends Controller
             'encryption' => 'nullable|string',
             'from_address' => 'required|email',
             'from_name' => 'nullable|string',
+            'reply_to_address' => 'nullable|email',
+            'reply_to_name' => 'nullable|string',
         ]);
 
         $config = EmailConfiguration::create($validated);
@@ -191,6 +217,8 @@ class EmailController extends Controller
             'encryption' => 'nullable|string',
             'from_address' => 'required|email',
             'from_name' => 'nullable|string',
+            'reply_to_address' => 'nullable|email',
+            'reply_to_name' => 'nullable|string',
         ]);
 
         $config->update($validated);
@@ -205,6 +233,8 @@ class EmailController extends Controller
             'to' => 'required|email',
             'from_email' => 'required|email',
             'from_name' => 'nullable|string',
+            'reply_to' => 'nullable|email',
+            'reply_to_name' => 'nullable|string',
         ]);
 
         $payload = [
@@ -213,6 +243,15 @@ class EmailController extends Controller
             'subject' => 'Brevo API Test Email',
             'htmlContent' => '<h1>Brevo API Test</h1><p>This is a test email sent via Brevo API.</p>',
         ];
+
+        if (!empty($validated['reply_to'])) {
+            $payload['replyTo'] = [
+                'email' => $validated['reply_to'],
+            ];
+            if (!empty($validated['reply_to_name'])) {
+                $payload['replyTo']['name'] = $validated['reply_to_name'];
+            }
+        }
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([

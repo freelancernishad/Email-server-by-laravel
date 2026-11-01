@@ -197,6 +197,16 @@
                                     <input type="text" id="conf-from-name" class="form-control">
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label>Reply-To Email (Optional)</label>
+                                    <input type="email" id="conf-reply-to-addr" class="form-control" placeholder="support@domain.com">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label>Reply-To Name (Optional)</label>
+                                    <input type="text" id="conf-reply-to-name" class="form-control" placeholder="Support Desk">
+                                </div>
+                            </div>
                             <div class="d-flex gap-2">
                                 <button type="submit" id="save-btn" class="btn btn-success flex-grow-1">Save Configuration</button>
                                 <button type="button" onclick="hideConfigForm()" class="btn btn-secondary">Cancel</button>
@@ -243,6 +253,28 @@
                                 <div class="col-md-6 mb-3">
                                     <label>From Name (Optional)</label>
                                     <input type="text" id="test-from-name" class="form-control" placeholder="Override Config Default">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label>Reply-To Email (Optional)</label>
+                                    <input type="email" id="test-reply-to" class="form-control" placeholder="Override Config Default">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label>Reply-To Name (Optional)</label>
+                                    <input type="text" id="test-reply-to-name" class="form-control" placeholder="Override Config Default">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label>CC (Optional, comma-separated)</label>
+                                    <input type="text" id="test-cc" class="form-control" placeholder="cc1@example.com, cc2@example.com">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label>BCC (Optional, comma-separated)</label>
+                                    <input type="text" id="test-bcc" class="form-control" placeholder="bcc1@example.com, bcc2@example.com">
                                 </div>
                             </div>
 
@@ -379,6 +411,30 @@
                                     <td>String</td>
                                     <td>No</td>
                                     <td>Override the "From" name defined in config.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>reply_to</code></td>
+                                    <td>String (Email)</td>
+                                    <td>No</td>
+                                    <td>Override the "Reply-To" email defined in config (or <code>reply_to_email</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>reply_to_name</code></td>
+                                    <td>String</td>
+                                    <td>No</td>
+                                    <td>Override the "Reply-To" name defined in config.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>cc</code></td>
+                                    <td>String</td>
+                                    <td>No</td>
+                                    <td>Comma-separated CC email addresses.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>bcc</code></td>
+                                    <td>String</td>
+                                    <td>No</td>
+                                    <td>Comma-separated BCC email addresses.</td>
                                 </tr>
                                 <tr>
                                     <td><code>attachments[]</code></td>
@@ -661,7 +717,9 @@
             
             alert(`
 Config Key: ${log.config_key}
-IP Address: ${log.ip_address}
+To: ${log.to_email}
+${log.cc ? `CC: ${log.cc}\n` : ''}${log.bcc ? `BCC: ${log.bcc}\n` : ''}From: ${log.from_email || 'Default'}
+${log.reply_to ? `Reply-To: ${log.reply_to}\n` : ''}IP Address: ${log.ip_address}
 Error Message: ${log.error_message || 'None'}
 
 Body Preview:
@@ -758,7 +816,10 @@ ${bodyPreview}
                  tbody.innerHTML += `
                      <tr>
                          <td><strong>${conf.host || 'Brevo API'}</strong><br>${typeBadge} <small class="text-muted">${conf.username || conf.api_key?.substring(0,8) + '...' || 'No Auth'}</small></td>
-                         <td>${conf.from_address}</td>
+                         <td>
+                             <div>${conf.from_address} ${conf.from_name ? `<small class="text-muted">(${conf.from_name})</small>` : ''}</div>
+                             ${conf.reply_to_address ? `<small class="text-muted"><i class="bi bi-reply-fill text-primary"></i> Reply-To: ${conf.reply_to_address}</small>` : ''}
+                         </td>
                          <td>
                              <div class="input-group input-group-sm" style="width: 150px;">
                                 <input type="text" class="form-control" value="${conf.key}" readonly>
@@ -796,6 +857,8 @@ ${bodyPreview}
             document.getElementById('conf-enc').value = conf.encryption || '';
             document.getElementById('conf-from-addr').value = conf.from_address || '';
             document.getElementById('conf-from-name').value = conf.from_name || '';
+            document.getElementById('conf-reply-to-addr').value = conf.reply_to_address || '';
+            document.getElementById('conf-reply-to-name').value = conf.reply_to_name || '';
             
             toggleTypeFields();
             document.getElementById('form-title').innerText = 'Edit Configuration';
@@ -807,6 +870,8 @@ ${bodyPreview}
             document.getElementById('conf-id').value = '';
             document.getElementById('conf-type').value = 'smtp';
             document.getElementById('conf-api-key').value = '';
+            document.getElementById('conf-reply-to-addr').value = '';
+            document.getElementById('conf-reply-to-name').value = '';
             toggleTypeFields();
             document.getElementById('form-title').innerText = 'Create New Configuration';
             document.getElementById('save-btn').innerText = 'Save Configuration';
@@ -842,6 +907,8 @@ ${bodyPreview}
                 encryption: document.getElementById('conf-enc').value,
                 from_address: document.getElementById('conf-from-addr').value,
                 from_name: document.getElementById('conf-from-name').value,
+                reply_to_address: document.getElementById('conf-reply-to-addr').value || null,
+                reply_to_name: document.getElementById('conf-reply-to-name').value || null,
             };
 
             try {
@@ -885,8 +952,18 @@ ${bodyPreview}
             formData.append('body', document.getElementById('test-body').value);
             formData.append('from_email', document.getElementById('test-from-email').value);
             formData.append('from_name', document.getElementById('test-from-name').value);
-
-            formData.append('from_name', document.getElementById('test-from-name').value);
+            if (document.getElementById('test-reply-to').value) {
+                formData.append('reply_to', document.getElementById('test-reply-to').value);
+            }
+            if (document.getElementById('test-reply-to-name').value) {
+                formData.append('reply_to_name', document.getElementById('test-reply-to-name').value);
+            }
+            if (document.getElementById('test-cc').value) {
+                formData.append('cc', document.getElementById('test-cc').value);
+            }
+            if (document.getElementById('test-bcc').value) {
+                formData.append('bcc', document.getElementById('test-bcc').value);
+            }
 
             const fileInput = document.getElementById('test-attachments');
             if (fileInput.files.length > 0) {
@@ -953,8 +1030,11 @@ ${bodyPreview}
  -F "to=recipient@example.com" \\
  -F "subject=Test Email" \\
  -F "body=<h1>It Works!</h1>" \\
- -F "attachments[]=@/path/to/file1.pdf" \\
- -F "attachments[]=@/path/to/file2.jpg"`,
+ -F "reply_to=support@example.com" \\
+ -F "reply_to_name=Customer Support" \\
+ -F "cc=supervisor@example.com" \\
+ -F "bcc=audit@example.com" \\
+ -F "attachments[]=@/path/to/invoice.pdf"`,
                 php: `&lt;?php
 $client = new GuzzleHttp\\Client();
 $response = $client->post('${url}', [
@@ -963,8 +1043,11 @@ $response = $client->post('${url}', [
         [ 'name' => 'to', 'contents' => 'recipient@example.com' ],
         [ 'name' => 'subject', 'contents' => 'Test Email' ],
         [ 'name' => 'body', 'contents' => '<h1>It Works!</h1>' ],
-        [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/file1.pdf', 'r') ],
-        [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/file2.jpg', 'r') ]
+        [ 'name' => 'reply_to', 'contents' => 'support@example.com' ],
+        [ 'name' => 'reply_to_name', 'contents' => 'Customer Support' ],
+        [ 'name' => 'cc', 'contents' => 'supervisor@example.com' ],
+        [ 'name' => 'bcc', 'contents' => 'audit@example.com' ],
+        [ 'name' => 'attachments[]', 'contents' => fopen('/path/to/invoice.pdf', 'r') ]
     ]
 ]);
 echo $response->getBody();`,
@@ -972,14 +1055,17 @@ echo $response->getBody();`,
 
 url = "${url}"
 files = [
-    ('attachments[]', ('file1.pdf', open('/path/to/file1.pdf', 'rb'), 'application/pdf')),
-    ('attachments[]', ('file2.jpg', open('/path/to/file2.jpg', 'rb'), 'image/jpeg'))
+    ('attachments[]', ('invoice.pdf', open('/path/to/invoice.pdf', 'rb'), 'application/pdf'))
 ]
 payload = {
     'config_key': '${key}',
     'to': 'recipient@example.com',
     'subject': 'Test Email',
-    'body': '<h1>It Works!</h1>'
+    'body': '<h1>It Works!</h1>',
+    'reply_to': 'support@example.com',
+    'reply_to_name': 'Customer Support',
+    'cc': 'supervisor@example.com',
+    'bcc': 'audit@example.com'
 }
 
 response = requests.post(url, data=payload, files=files)
@@ -993,8 +1079,11 @@ data.append('config_key', '${key}');
 data.append('to', 'recipient@example.com');
 data.append('subject', 'Test Email');
 data.append('body', '<h1>It Works!</h1>');
-data.append('attachments[]', fs.createReadStream('/path/to/file1.pdf'));
-data.append('attachments[]', fs.createReadStream('/path/to/file2.jpg'));
+data.append('reply_to', 'support@example.com');
+data.append('reply_to_name', 'Customer Support');
+data.append('cc', 'supervisor@example.com');
+data.append('bcc', 'audit@example.com');
+data.append('attachments[]', fs.createReadStream('/path/to/invoice.pdf'));
 
 axios.post('${url}', data, {
     headers: {
