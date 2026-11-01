@@ -127,6 +127,7 @@
 <script>
     let currentLogPage = 1;
     let allConfigs = [];
+    let currentLogs = [];
     let logModal;
 
     // Ideally we would fetch configs just for the filter if needed, or if we want to show config names.
@@ -161,6 +162,7 @@
             const res = await axios.get(`${API_URL}/email-logs`, {
                 params: { page, search, status, date, config_key }
             });
+            currentLogs = res.data.data || [];
             renderLogs(res.data);
         } catch (err) {
             console.error(err);
@@ -192,7 +194,7 @@
                     <td><small>${log.from_email || '-'}</small></td>
                     <td>${statusBadge}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-info" onclick='showLogDetails(${JSON.stringify(log)})'>Details</button>
+                        <button class="btn btn-sm btn-outline-info" onclick="showLogDetailsById(${log.id})">Details</button>
                         <button class="btn btn-sm btn-outline-danger" onclick="deleteLog(${log.id})">Delete</button>
                     </td>
                 </tr>
@@ -214,6 +216,12 @@
         document.getElementById('log-date').value = '';
         document.getElementById('log-config-key').value = '';
         fetchLogs(1);
+    }
+
+    function showLogDetailsById(id) {
+        const log = currentLogs.find(l => l.id == id);
+        if (!log) return;
+        showLogDetails(log);
     }
 
     function showLogDetails(log) {

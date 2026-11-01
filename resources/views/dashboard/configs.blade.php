@@ -229,7 +229,7 @@
                          </div>
                      </td>
                      <td>
-                         <button class="btn btn-sm btn-info text-white" onclick='editConfig(${JSON.stringify(conf)})'>Edit</button>
+                         <button class="btn btn-sm btn-info text-white" onclick="editConfigById(${conf.id})">Edit</button>
                      </td>
                  </tr>
              `;
@@ -258,6 +258,12 @@
 
     function hideConfigForm() {
         document.getElementById('config-form-container').classList.add('hidden');
+    }
+
+    function editConfigById(id) {
+        const conf = allConfigs.find(c => c.id == id);
+        if (!conf) return;
+        editConfig(conf);
     }
 
     function editConfig(conf) {
