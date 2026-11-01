@@ -167,7 +167,7 @@
  -F "cc=supervisor@example.com" \\
  -F "bcc=audit@example.com" \\
  -F "attachments[]=@/path/to/invoice.pdf"`,
-            php: `<?php
+            php: '<' + `?php
 require 'vendor/autoload.php';
 
 use GuzzleHttp\\Client;

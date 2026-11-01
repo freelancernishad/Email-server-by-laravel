@@ -16,4 +16,13 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_all_dashboard_views_render(): void
+    {
+        $this->get('/dashboard')->assertStatus(200);
+        $this->get('/dashboard/test-email')->assertStatus(200);
+        $this->get('/dashboard/logs')->assertStatus(200);
+        $this->get('/dashboard/docs')->assertStatus(200);
+        $this->get('/dashboard/users')->assertStatus(200);
+    }
 }

@@ -1035,7 +1035,7 @@ ${bodyPreview}
  -F "cc=supervisor@example.com" \\
  -F "bcc=audit@example.com" \\
  -F "attachments[]=@/path/to/invoice.pdf"`,
-                php: `&lt;?php
+                php: '<' + `?php
 $client = new GuzzleHttp\\Client();
 $response = $client->post('${url}', [
     'multipart' => [
